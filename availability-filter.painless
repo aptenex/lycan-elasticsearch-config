@@ -1,72 +1,30 @@
 // Get the difference in days between the arrival and departure
-              LocalDate cArrival = LocalDate.parse(params.arrivalDate);
-              LocalDate cDeparture = LocalDate.parse(params.departureDate);
-              
-              int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
-              
-              // Get the difference in days between the arrival
-              // and unitAvailability start date sequence
-              
-              ReadableDateTime uaStartDateTime = doc['unitAvailability.dateRange.startDate'].value;
-              LocalDate uaStart = LocalDate.of(
-                uaStartDateTime.getYear(), 
-                uaStartDateTime.getMonthOfYear(), 
-                uaStartDateTime.getDayOfMonth()
-              );
-              
-              ArrayList stateList = new ArrayList();
-              
-              int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
+LocalDate cArrival = LocalDate.parse(params.arrivalDate);
+LocalDate cDeparture = LocalDate.parse(params.departureDate);
 
-              String[] minStayList = /,/.split(doc['unitAvailability.configuration.minStay.keyword'].value);
-              String[] maxStayList = /,/.split(doc['unitAvailability.configuration.maxStay.keyword'].value);
-              char[] changeoverList = doc['unitAvailability.configuration.changeover.keyword'].value.toCharArray();
+int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
 
-              // 1 = arrival, 2 = departure, 3 = both 0 = neither
-              
-              int arrivalIndex = uaDiffDays;
-              int departureIndex = uaDiffDays + nights;
-              
-              // Lets get arrival and departure
-              char arrival = changeoverList[arrivalIndex];
-              char departure = changeoverList[departureIndex];
-              
-if (!arrival.toString().equals("1") && !arrival.toString().equals("3")) {
-  stateList.add("CHANGEOVER_ARRIVAL_NOT_SATISIFIED");
+// Get the difference in days between the arrival
+// and unitAvailability start date sequence
+
+ReadableDateTime uaStartDateTime = doc['unitAvailability.dateRange.startDate'].value;
+LocalDate uaStart = LocalDate.of(
+  uaStartDateTime.getYear(), 
+  uaStartDateTime.getMonthOfYear(), 
+  uaStartDateTime.getDayOfMonth()
+);
+
+int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
+
+String as = doc['unitAvailability.configuration.availability.keyword'].value;
+
+if (uaDiffDays > as.length()) {
+  throw new Exception(as.length() + "");
 }
 
-if (!departure.toString().equals("2") &&! departure.toString().equals("3")) {
-  stateList.add("CHANGEOVER_DEPARTURE_NOT_SATISIFIED");
-}
+// We minus one off the end as you can depart on an N
+int nightsSequence = (uaDiffDays + nights) - 1;
 
-int minStay = Integer.parseInt(minStayList[arrivalIndex]);
-int maxStay = Integer.parseInt(maxStayList[departureIndex]);
+String asSpliced = as.substring(uaDiffDays, nightsSequence).toString();
 
-if (nights < minStay) {
-  // We want to see if this minimum stay can be made valid by checking ahead on the availability string
-  // Do this by adding the difference onto the nights and check if that is valid
-  // We subtract one as the departure day can be a N, with removing that we can just check
-  // for the existence of N
-  int minStayDiff = minStay - nights;
-  int futureNightsSequence = uaDiffDays + nights + minStayDiff - 1;
-
-  String as = doc['unitAvailability.configuration.availability.keyword'].value;
-  if (uaDiffDays > as.length()) {
-    throw new Exception(as.length() + "");
-  }
-
-  String asSpliced = as.substring(uaDiffDays, futureNightsSequence).toString();
-
-  if (asSpliced.indexOf('N') < 0) {
-    stateList.add("MINIMUM_STAY_NOT_SATISIFIED_WITH_AVAILABILITY")
-  } else {
-    stateList.add("MINIMUM_STAY_NOT_SATISIFIED");
-  }
-
-}
-
-if (nights > maxStay) {
-  stateList.add("MAXIMUM_STAY_INVALID");
-}
-
-return stateList;
+return asSpliced.indexOf('N') < 0;
