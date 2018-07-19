@@ -12,4 +12,4 @@ In `/etc/elasticsearch/elasticsearch.yml` the following needs to be added/modifi
  
 ## Index Naming Conventions
 
-For indexes, the convention is as follows where {} denotes a variable eg {name}: `org.{name}.{indexType}`. For example, `org.foo_cottages.properties`.
+For indexes, the convention is as follows where {} denotes a variable eg {name}: `lycan.{name}.{indexType}`. For example, `lycan.foo_cottages.properties`.
