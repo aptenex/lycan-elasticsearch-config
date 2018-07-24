@@ -13,3 +13,7 @@ In `/etc/elasticsearch/elasticsearch.yml` the following needs to be added/modifi
 ## Index Naming Conventions
 
 For indexes, the convention is as follows where {} denotes a variable eg {name}: `lycan.{name}.{indexType}`. For example, `lycan.foo_cottages.properties`.
+
+## Todo
+
+ - Write tests in Groovy (what painless is based off) to validate the availability checking strings
