@@ -48,7 +48,7 @@ if (nights < minStay) {
   // We subtract one as the departure day can be a N, with removing that we can just check
   // for the existence of N
   int minStayDiff = minStay - nights;
-  int futureNightsSequence = uaDiffDays + nights + minStayDiff - 1;
+  int futureNightsSequence = uaDiffDays + nights + minStayDiff;
 
   String as = doc['unitAvailability.configuration.availability.keyword'].value;
   if (uaDiffDays > as.length()) {

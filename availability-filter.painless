@@ -22,9 +22,8 @@ if (uaDiffDays > as.length()) {
   throw new Exception(as.length() + "");
 }
 
-// We minus one off the end as you can depart on an N
-int nightsSequence = (uaDiffDays + nights) - 1;
+int nightsSequence = (uaDiffDays + nights);
 
 String asSpliced = as.substring(uaDiffDays, nightsSequence).toString();
 
-return asSpliced.indexOf('N') < 0;
+return (asSpliced.indexOf('N') < 0);
