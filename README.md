@@ -14,6 +14,8 @@ In `/etc/elasticsearch/elasticsearch.yml` the following needs to be added/modifi
 
 For indexes, the convention is as follows where {} denotes a variable eg {name}: `lycan.{name}.{indexType}`. For example, `lycan.foo_cottages.properties`.
 
+All {} variables must be all lowercase characters/numbers and underscores.
+
 ## Todo
 
  - Write tests in Groovy (what painless is based off) to validate the availability checking strings
