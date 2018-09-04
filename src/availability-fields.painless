@@ -1,3 +1,5 @@
+ArrayList stateList = new ArrayList();
+
 // Get the difference in days between the arrival and departure
 LocalDate cArrival = LocalDate.parse(params.arrivalDate);
 LocalDate cDeparture = LocalDate.parse(params.departureDate);
@@ -14,9 +16,21 @@ LocalDate uaStart = LocalDate.of(
   uaStartDateTime.getDayOfMonth()
 );
 
-ArrayList stateList = new ArrayList();
-
 int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
+
+String as = doc['unitAvailability.configuration.availability.keyword'].value;
+
+if (uaDiffDays > as.length()) {
+  throw new Exception(as.length() + "");
+}
+
+int nightsSequence = (uaDiffDays + nights);
+
+String asSplicedA = as.substring(uaDiffDays, nightsSequence).toString();
+
+if (!(asSplicedA.indexOf('N') < 0)) {
+    stateList.add("AVAILABILITY_NOT_SATISFIED");
+}
 
 String[] minStayList = /,/.split(doc['unitAvailability.configuration.minStay.keyword'].value);
 String[] maxStayList = /,/.split(doc['unitAvailability.configuration.maxStay.keyword'].value);
@@ -50,14 +64,9 @@ if (nights < minStay) {
   int minStayDiff = minStay - nights;
   int futureNightsSequence = uaDiffDays + nights + minStayDiff;
 
-  String as = doc['unitAvailability.configuration.availability.keyword'].value;
-  if (uaDiffDays > as.length()) {
-    throw new Exception(as.length() + "");
-  }
+  String asFutureSpliced = as.substring(uaDiffDays, futureNightsSequence).toString();
 
-  String asSpliced = as.substring(uaDiffDays, futureNightsSequence).toString();
-
-  if (asSpliced.indexOf('N') < 0) {
+  if (asFutureSpliced.indexOf('N') < 0) {
     stateList.add("MINIMUM_STAY_NOT_SATISFIED_WITH_AVAILABILITY")
   } else {
     stateList.add("MINIMUM_STAY_NOT_SATISFIED");
