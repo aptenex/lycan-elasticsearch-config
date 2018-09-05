@@ -223,6 +223,9 @@
           },
           "longitude": {
             "type": "float"
+          },
+          "geoPoint": {
+            "type": "geo_point"
           }
         }
       },
