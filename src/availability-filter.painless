@@ -9,9 +9,9 @@ int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
 
 ReadableDateTime uaStartDateTime = doc['unitAvailability.dateRange.startDate'].value;
 LocalDate uaStart = LocalDate.of(
-  uaStartDateTime.getYear(), 
-  uaStartDateTime.getMonthOfYear(), 
-  uaStartDateTime.getDayOfMonth()
+    uaStartDateTime.getYear(),
+    uaStartDateTime.getMonthOfYear(),
+    uaStartDateTime.getDayOfMonth()
 );
 
 int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
@@ -20,7 +20,7 @@ if (doc['unitAvailability.configuration.availability.keyword'].value != null) {
     String as = doc['unitAvailability.configuration.availability.keyword'].value;
 
     if (uaDiffDays > as.length()) {
-      throw new Exception(as.length() + "");
+        throw new Exception(as.length() + "");
     }
 
     int nightsSequence = (uaDiffDays + nights);
