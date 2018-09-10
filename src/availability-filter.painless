@@ -16,14 +16,19 @@ LocalDate uaStart = LocalDate.of(
 
 int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
 
-String as = doc['unitAvailability.configuration.availability.keyword'].value;
+if (doc['unitAvailability.configuration.availability.keyword'].value != null) {
+    String as = doc['unitAvailability.configuration.availability.keyword'].value;
 
-if (uaDiffDays > as.length()) {
-  throw new Exception(as.length() + "");
+    if (uaDiffDays > as.length()) {
+      throw new Exception(as.length() + "");
+    }
+
+    int nightsSequence = (uaDiffDays + nights);
+
+    String asSpliced = as.substring(uaDiffDays, nightsSequence).toString();
+
+    return (asSpliced.indexOf('N') < 0);
+} else {
+    // No availability data - CHANGE THIS TO YOUR PREFERENCE (true for available by default, false otherwise)
+    return true;
 }
-
-int nightsSequence = (uaDiffDays + nights);
-
-String asSpliced = as.substring(uaDiffDays, nightsSequence).toString();
-
-return (asSpliced.indexOf('N') < 0);

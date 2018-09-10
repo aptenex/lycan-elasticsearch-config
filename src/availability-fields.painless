@@ -32,50 +32,64 @@ if (!(asSplicedA.indexOf('N') < 0)) {
     stateList.add("AVAILABILITY_NOT_SATISFIED");
 }
 
-String[] minStayList = /,/.split(doc['unitAvailability.configuration.minStay.keyword'].value);
-String[] maxStayList = /,/.split(doc['unitAvailability.configuration.maxStay.keyword'].value);
-char[] changeoverList = doc['unitAvailability.configuration.changeover.keyword'].value.toCharArray();
-
-// 1 = arrival, 2 = departure, 3 = both 0 = neither
-
 int arrivalIndex = uaDiffDays;
 int departureIndex = uaDiffDays + nights;
 
-// Lets get arrival and departure
-char arrival = changeoverList[arrivalIndex];
-char departure = changeoverList[departureIndex];
-
-if (!arrival.toString().equals("1") && !arrival.toString().equals("3")) {
-  stateList.add("CHANGEOVER_ARRIVAL_NOT_SATISFIED");
+if (doc['unitAvailability.configuration.maxStay.keyword'].value != null) {
+    String[] maxStayList = /,/.split(doc['unitAvailability.configuration.maxStay.keyword'].value);
+    int maxStay = Integer.parseInt(maxStayList[departureIndex]);
+    if (nights > maxStay) {
+      stateList.add("MAXIMUM_STAY_NOT_SATISFIED");
+    }
+} else {
+    stateList.add("MAXIMUM_STAY_NO_DATA_AVAILABLE");
 }
 
-if (!departure.toString().equals("2") &&! departure.toString().equals("3")) {
-  stateList.add("CHANGEOVER_DEPARTURE_NOT_SATISFIED");
+if (doc['unitAvailability.configuration.changeover.keyword'].value != null) {
+
+    char[] changeoverList = doc['unitAvailability.configuration.changeover.keyword'].value.toCharArray();
+
+    // 1 = arrival, 2 = departure, 3 = both 0 = neither
+
+    // Lets get arrival and departure
+    char arrival = changeoverList[arrivalIndex];
+    char departure = changeoverList[departureIndex];
+
+    if (!arrival.toString().equals("1") && !arrival.toString().equals("3")) {
+      stateList.add("CHANGEOVER_ARRIVAL_NOT_SATISFIED");
+    }
+
+    if (!departure.toString().equals("2") &&! departure.toString().equals("3")) {
+      stateList.add("CHANGEOVER_DEPARTURE_NOT_SATISFIED");
+    }
+
+} else {
+    stateList.add("CHANGEOVER_NO_DATA_AVAILABLE");
 }
 
-int minStay = Integer.parseInt(minStayList[arrivalIndex]);
-int maxStay = Integer.parseInt(maxStayList[departureIndex]);
+if (doc['unitAvailability.configuration.minStay.keyword'].value != null) {
+    String[] minStayList = /,/.split(doc['unitAvailability.configuration.minStay.keyword'].value);
+    int minStay = Integer.parseInt(minStayList[arrivalIndex]);
 
-if (nights < minStay) {
-  // We want to see if this minimum stay can be made valid by checking ahead on the availability string
-  // Do this by adding the difference onto the nights and check if that is valid
-  // We subtract one as the departure day can be a N, with removing that we can just check
-  // for the existence of N
-  int minStayDiff = minStay - nights;
-  int futureNightsSequence = uaDiffDays + nights + minStayDiff;
+    if (nights < minStay) {
+      // We want to see if this minimum stay can be made valid by checking ahead on the availability string
+      // Do this by adding the difference onto the nights and check if that is valid
+      // We subtract one as the departure day can be a N, with removing that we can just check
+      // for the existence of N
+      int minStayDiff = minStay - nights;
+      int futureNightsSequence = uaDiffDays + nights + minStayDiff;
 
-  String asFutureSpliced = as.substring(uaDiffDays, futureNightsSequence).toString();
+      String asFutureSpliced = as.substring(uaDiffDays, futureNightsSequence).toString();
 
-  if (asFutureSpliced.indexOf('N') < 0) {
-    stateList.add("MINIMUM_STAY_NOT_SATISFIED_WITH_AVAILABILITY")
-  } else {
-    stateList.add("MINIMUM_STAY_NOT_SATISFIED");
-  }
+      if (asFutureSpliced.indexOf('N') < 0) {
+        stateList.add("MINIMUM_STAY_NOT_SATISFIED_WITH_AVAILABILITY")
+      } else {
+        stateList.add("MINIMUM_STAY_NOT_SATISFIED");
+      }
 
-}
-
-if (nights > maxStay) {
-  stateList.add("MAXIMUM_STAY_NOT_SATISFIED");
+    }
+} else {
+    stateList.add("MINIMUM_STAY_NO_DATA_AVAILABLE");
 }
 
 return stateList;
