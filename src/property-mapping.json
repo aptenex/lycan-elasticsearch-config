@@ -232,7 +232,7 @@
             "type": "geo_point"
           } 
         }
-      }
+      },
       "media": {
         "type": "nested",
         "properties": {
