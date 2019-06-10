@@ -223,12 +223,16 @@
           },
           "longitude": {
             "type": "float"
-          },
-          "geoPoint": {
-            "type": "geo_point"
-          }
+          }          
         }
       },
+      "locationGeoPoint": {
+        "properties": {
+          "geoPoint": {
+            "type": "geo_point"
+          } 
+        }
+      }
       "media": {
         "type": "nested",
         "properties": {
