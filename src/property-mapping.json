@@ -217,20 +217,16 @@
         }
       },
       "location": {
+        "type": "geo_point"
+      },
+      "locationRaw": {
         "properties": {
           "latitude": {
             "type": "float"
           },
           "longitude": {
             "type": "float"
-          }          
-        }
-      },
-      "locationGeoPoint": {
-        "properties": {
-          "geoPoint": {
-            "type": "geo_point"
-          } 
+          }
         }
       },
       "media": {
