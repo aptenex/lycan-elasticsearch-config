@@ -5,6 +5,12 @@ GET /org.*.properties/_search
       "availabilityFailures": {
         "script" : {
             "source": """
+              ArrayList stateList = new ArrayList();
+              if (doc['unitAvailability.dateRange.startDate'].size() == 0) {
+                  stateList.add("UNIT_AVAILABILITY_NOT_FOUND");
+                  return stateList;
+              }
+            
               // Get the difference in days between the arrival and departure
               LocalDate cArrival = LocalDate.parse(params.arrivalDate);
               LocalDate cDeparture = LocalDate.parse(params.departureDate);
@@ -14,14 +20,7 @@ GET /org.*.properties/_search
               // Get the difference in days between the arrival
               // and unitAvailability start date sequence
 
-              ReadableDateTime uaStartDateTime = doc['unitAvailability.dateRange.startDate'].value;
-              LocalDate uaStart = LocalDate.of(
-                uaStartDateTime.getYear(),
-                uaStartDateTime.getMonthOfYear(),
-                uaStartDateTime.getDayOfMonth()
-              );
-
-              ArrayList stateList = new ArrayList();
+              LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDate();           
 
               int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
 
@@ -48,8 +47,6 @@ GET /org.*.properties/_search
 
               int minStay = Integer.parseInt(minStayList[arrivalIndex]);
               int maxStay = Integer.parseInt(maxStayList[departureIndex]);
-
-              minStay = 6;
 
               if (nights < minStay) {
                 // We want to see if this minimum stay can be made valid by checking ahead on the availability string
@@ -91,6 +88,11 @@ GET /org.*.properties/_search
       "sequenceChecked": {
         "script" : {
             "source": """
+            
+              if (doc['unitAvailability.dateRange.startDate'].size() == 0) {
+                  return ["UNIT_AVAILABILITY_NOT_FOUND"];
+              }
+            
               // Get the difference in days between the arrival and departure
               LocalDate cArrival = LocalDate.parse(params.arrivalDate);
               LocalDate cDeparture = LocalDate.parse(params.departureDate);
@@ -100,12 +102,7 @@ GET /org.*.properties/_search
               // Get the difference in days between the arrival
               // and unitAvailability start date sequence
 
-              ReadableDateTime uaStartDateTime = doc['unitAvailability.dateRange.startDate'].value;
-              LocalDate uaStart = LocalDate.of(
-                uaStartDateTime.getYear(),
-                uaStartDateTime.getMonthOfYear(),
-                uaStartDateTime.getDayOfMonth()
-              );
+              LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDate();
 
               // We add 1 as arrays start at 0
               int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
@@ -143,6 +140,11 @@ GET /org.*.properties/_search
                 "script" : {
                     "script" : {
                         "source": """
+                        
+                          if (doc['unitAvailability.dateRange.startDate'].size() == 0) {
+                            return false;
+                          }
+                        
                           // Get the difference in days between the arrival and departure
                           LocalDate cArrival = LocalDate.parse(params.arrivalDate);
                           LocalDate cDeparture = LocalDate.parse(params.departureDate);
@@ -152,12 +154,7 @@ GET /org.*.properties/_search
                           // Get the difference in days between the arrival
                           // and unitAvailability start date sequence
 
-                          ReadableDateTime uaStartDateTime = doc['unitAvailability.dateRange.startDate'].value;
-                          LocalDate uaStart = LocalDate.of(
-                            uaStartDateTime.getYear(),
-                            uaStartDateTime.getMonthOfYear(),
-                            uaStartDateTime.getDayOfMonth()
-                          );
+                          LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDate();
 
                           int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
 
