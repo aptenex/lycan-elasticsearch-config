@@ -1,10 +1,10 @@
-GET /org.*.properties/_search
+GET /lycan_main.lake_como_villas.properties_m3v4bi/_search
 {
   "_source": false,
-   "script_fields": {
-      "availabilityFailures": {
-        "script" : {
-            "source": """
+  "script_fields": {
+    "availabilityFailures": {
+      "script": {
+        "source": """
               ArrayList stateList = new ArrayList();
               if (doc['unitAvailability.dateRange.startDate'].size() == 0) {
                   stateList.add("UNIT_AVAILABILITY_NOT_FOUND");
@@ -23,6 +23,9 @@ GET /org.*.properties/_search
               LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDate();           
 
               int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
+              if (uaDiffDays < 0) {
+                throw new Exception("Cannot run query against past dates");
+              }
 
               String[] minStayList = /,/.split(doc['unitAvailability.configuration.minStay.keyword'].value);
               String[] maxStayList = /,/.split(doc['unitAvailability.configuration.maxStay.keyword'].value);
@@ -76,19 +79,17 @@ GET /org.*.properties/_search
               }
 
               return stateList;
-
-            """,
-            "lang": "painless",
-            "params" : {
-                "arrivalDate" : "2018-07-26",
-                "departureDate": "2018-07-31"
-            }
-         }
-      },
-      "sequenceChecked": {
-        "script" : {
-            "source": """
-            
+""",
+        "lang": "painless",
+        "params": {
+          "arrivalDate": "2020-01-05",
+          "departureDate": "2020-01-12"
+        }
+      }
+    },
+    "sequenceChecked": {
+      "script": {
+        "source": """
               if (doc['unitAvailability.dateRange.startDate'].size() == 0) {
                   return ["UNIT_AVAILABILITY_NOT_FOUND"];
               }
@@ -106,7 +107,10 @@ GET /org.*.properties/_search
 
               // We add 1 as arrays start at 0
               int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
-
+              if (uaDiffDays < 0) {
+                throw new Exception("Cannot run query against past dates");
+              }
+              
               String as = doc['unitAvailability.configuration.availability.keyword'].value;
 
               if (uaDiffDays > as.length()) {
@@ -124,23 +128,21 @@ GET /org.*.properties/_search
                 asSpliced,
                 (asSpliced.indexOf('N') < 0)
               ];
-
-            """,
-            "lang": "painless",
-            "params" : {
-                "arrivalDate" : "2018-07-26",
-                "departureDate": "2018-08-01"
-            }
-         }
+""",
+        "lang": "painless",
+        "params": {
+          "arrivalDate": "2020-01-05",
+          "departureDate": "2020-01-12"
+        }
       }
-    },
-    "query": {
-        "bool" : {
-            "must" : {
-                "script" : {
-                    "script" : {
-                        "source": """
-                        
+    }
+  },
+  "query": {
+    "bool": {
+      "must": {
+        "script": {
+          "script": {
+            "source": """
                           if (doc['unitAvailability.dateRange.startDate'].size() == 0) {
                             return false;
                           }
@@ -169,16 +171,15 @@ GET /org.*.properties/_search
                           String asSpliced = as.substring(uaDiffDays, nightsSequence).toString();
 
                           return (asSpliced.indexOf('N') < 0);
-
-                        """,
-                        "lang": "painless",
-                        "params" : {
-                            "arrivalDate" : "2019-07-26",
-                            "departureDate": "2019-08-02"
-                        }
-                     }
-                }
+""",
+            "lang": "painless",
+            "params": {
+              "arrivalDate": "2020-01-05",
+              "departureDate": "2020-01-12"
             }
+          }
         }
+      }
     }
+  }
 }
