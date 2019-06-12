@@ -159,7 +159,9 @@ GET /lycan_main.lake_como_villas.properties_m3v4bi/_search
                           LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDate();
 
                           int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
-
+                          if (uaDiffDays < 0) {
+                            return false;
+                          }
                           String as = doc['unitAvailability.configuration.availability.keyword'].value;
 
                           if (uaDiffDays > as.length()) {
