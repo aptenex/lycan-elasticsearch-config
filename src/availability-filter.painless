@@ -1,3 +1,7 @@
+if (doc['unitAvailability.dateRange.startDate'].size() == 0) {
+    return false;
+}
+
 // Get the difference in days between the arrival and departure
 LocalDate cArrival = LocalDate.parse(params.arrivalDate);
 LocalDate cDeparture = LocalDate.parse(params.departureDate);
@@ -7,28 +11,21 @@ int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
 // Get the difference in days between the arrival
 // and unitAvailability start date sequence
 
-ReadableDateTime uaStartDateTime = doc['unitAvailability.dateRange.startDate'].value;
-LocalDate uaStart = LocalDate.of(
-    uaStartDateTime.getYear(),
-    uaStartDateTime.getMonthOfYear(),
-    uaStartDateTime.getDayOfMonth()
-);
+LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDate();
 
 int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
-
-if (doc['unitAvailability.configuration.availability.keyword'].value != null) {
-    String as = doc['unitAvailability.configuration.availability.keyword'].value;
-
-    if (uaDiffDays > as.length()) {
-        throw new Exception(as.length() + "");
-    }
-
-    int nightsSequence = (uaDiffDays + nights);
-
-    String asSpliced = as.substring(uaDiffDays, nightsSequence).toString();
-
-    return (asSpliced.indexOf('N') < 0);
-} else {
-    // No availability data - CHANGE THIS TO YOUR PREFERENCE (true for available by default, false otherwise)
-    return true;
+if (uaDiffDays < 0) {
+    throw new Exception("Cannot run query against past dates");
 }
+
+String as = doc['unitAvailability.configuration.availability.keyword'].value;
+
+if (uaDiffDays > as.length()) {
+    throw new Exception(as.length() + "");
+}
+
+int nightsSequence = (uaDiffDays + nights);
+
+String asSpliced = as.substring(uaDiffDays, nightsSequence).toString();
+
+return (asSpliced.indexOf('N') < 0);
