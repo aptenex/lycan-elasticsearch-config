@@ -15,7 +15,7 @@ LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDat
 
 int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
 if (uaDiffDays < 0) {
-    throw new Exception("Cannot run query against past dates");
+    return false;
 }
 
 String as = doc['unitAvailability.configuration.availability.keyword'].value;
