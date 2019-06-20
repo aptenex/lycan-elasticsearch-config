@@ -1,0 +1,35 @@
+GET lycan_main.ib_elasticsearch.properties_7687sg/_search
+{
+  "_source": false,
+  "script_fields": {
+    "losPriceLookup": {
+      "script": {
+        "source": """
+              LocalDate cArrival = LocalDate.parse(params.arrivalDate);
+              LocalDate cDeparture = LocalDate.parse(params.departureDate);
+
+              int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
+              
+              if (doc['pricing.los.base64Blob'].size() == 0) {
+                return null;
+              }
+              
+              String losBase64 = doc['pricing.los.base64Blob'].get(0).utf8ToString();
+              String[] records = /\n/.split(losBase64);
+              
+              for(int i = 0; i < records.length; i++) {
+                
+              }
+              
+              return records;
+""",
+        "lang": "painless",
+        "params": {
+          "arrivalDate": "2020-01-05",
+          "departureDate": "2020-01-12",
+          "guests": 4
+        }
+      }
+    }
+  }
+}
