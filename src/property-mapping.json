@@ -1,5 +1,14 @@
 {
   "properties": {
+    "$locale": {
+      "type": "text",
+      "fields": {
+        "keyword": {
+          "type": "keyword",
+          "ignore_above": 256
+        }
+      }
+    },
     "address": {
       "properties": {
         "addressLine1": {
@@ -371,6 +380,43 @@
             "keyword": {
               "type": "keyword",
               "ignore_above": 256
+            }
+          }
+        }
+      }
+    },
+    "pricing": {
+      "properties": {
+        "los": {
+          "properties": {
+            "base64Blob": {
+              "type": "binary",
+              "doc_values": true
+            }
+          }
+        },
+        "visual": {
+          "properties": {
+            "currency": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "weeklyLow": {
+              "type": "long"
+            },
+            "weeklyHigh": {
+              "type": "long"
+            },
+            "nightlyLow": {
+              "type": "long"
+            },
+            "nightlyHigh": {
+              "type": "long"
             }
           }
         }
