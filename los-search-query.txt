@@ -1,6 +1,77 @@
 GET lycan_main.ib_elasticsearch.properties_7687sg/_search
 {
   "_source": false,
+  "query": {
+    "bool": {
+      "must": {
+        "script": {
+          "script": {
+            "source": """
+              LocalDate cArrival = LocalDate.parse(params.arrivalDate);
+              LocalDate cDeparture = LocalDate.parse(params.departureDate);
+              int paramGuestCount = params.guests;
+              int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
+              
+              if (doc['pricing.los.base64Blob'].size() == 0) {
+                return false;
+              }
+              
+              String losBase64 = doc['pricing.los.base64Blob'].get(0).utf8ToString();
+              String[] records = /\n/.split(losBase64);
+              
+              int currentClosestMatchDiff = 99;
+              String[] closestMatch;
+              
+              for(int i = 0; i < records.length; i++) {
+                String[] recordParts = /,/.split(records[i]);
+                String recordDate = recordParts[0];
+                // check if date matches
+                if (recordDate == params.arrivalDate) {
+                  // We now need to match the guest count, if no match exists closest one that is greater than it
+                  int guestCount = Integer.parseInt(recordParts[1]);
+                  
+                  if (guestCount == paramGuestCount) {
+                    closestMatch = recordParts;
+                    currentClosestMatchDiff = 0;
+                    
+                    break;
+                  } else {
+                    // we need to get the diff 
+                    int guestDiff = guestCount - paramGuestCount; 
+  
+                    if (guestDiff > 0 && guestDiff < currentClosestMatchDiff) {
+                      // Ok guest diff means this count is higher - so we can use it
+                      currentClosestMatchDiff = guestDiff;
+                      closestMatch = recordParts;
+                    }
+                  }
+                  
+                }
+              }
+              
+              // If we've reached this point and the closestMatch is still null then no available price was available
+              if (closestMatch === null) {
+                return false;
+              }
+              
+              // Else we can return the correct price
+              float fp = Float.parseFloat(closestMatch[nights + 1]);
+              
+              return fp > 0 && fp >= params.minimumPrice && fp <= params.maximumPrice;
+""",
+            "lang": "painless",
+            "params": {
+              "arrivalDate": "2019-06-20",
+              "departureDate": "2019-06-27",
+              "guests": 3,
+              "minimumPrice": 0,
+              "maximumPrice": 999999
+            }
+          }
+        }
+      }
+    }
+  },
   "script_fields": {
     "losPriceLookup": {
       "script": {
@@ -57,7 +128,6 @@ GET lycan_main.ib_elasticsearch.properties_7687sg/_search
                 Float.parseFloat(closestMatch[nights + 1]), // + 1 due to there being a date & guest part (+2) but an offset (-1)
                 closestMatch
               ];
-              
 """,
         "lang": "painless",
         "params": {
