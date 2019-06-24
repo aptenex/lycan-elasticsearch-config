@@ -7,7 +7,7 @@ GET lycan_main.ib_elasticsearch.properties_7687sg/_search
         "source": """
               LocalDate cArrival = LocalDate.parse(params.arrivalDate);
               LocalDate cDeparture = LocalDate.parse(params.departureDate);
-
+              int paramGuestCount = params.guests;
               int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
               
               if (doc['pricing.los.base64Blob'].size() == 0) {
@@ -17,17 +17,53 @@ GET lycan_main.ib_elasticsearch.properties_7687sg/_search
               String losBase64 = doc['pricing.los.base64Blob'].get(0).utf8ToString();
               String[] records = /\n/.split(losBase64);
               
+              int currentClosestMatchDiff = 99;
+              String[] closestMatch;
+              
               for(int i = 0; i < records.length; i++) {
-                
+                String[] recordParts = /,/.split(records[i]);
+                String recordDate = recordParts[0];
+                // check if date matches
+                if (recordDate == params.arrivalDate) {
+                  // We now need to match the guest count, if no match exists closest one that is greater than it
+                  int guestCount = Integer.parseInt(recordParts[1]);
+                  
+                  if (guestCount == paramGuestCount) {
+                    closestMatch = recordParts;
+                    currentClosestMatchDiff = 0;
+                    
+                    break;
+                  } else {
+                    // we need to get the diff 
+                    int guestDiff = guestCount - paramGuestCount; 
+  
+                    if (guestDiff > 0 && guestDiff < currentClosestMatchDiff) {
+                      // Ok guest diff means this count is higher - so we can use it
+                      currentClosestMatchDiff = guestDiff;
+                      closestMatch = recordParts;
+                    }
+                  }
+                  
+                }
               }
               
-              return records;
+              // If we've reached this point and the closestMatch is still null then no available price was available
+              if (closestMatch === null) {
+                return null;
+              }
+              
+              // Else we can return the correct price
+              return [
+                Float.parseFloat(closestMatch[nights + 1]), // + 1 due to there being a date & guest part (+2) but an offset (-1)
+                closestMatch
+              ];
+              
 """,
         "lang": "painless",
         "params": {
-          "arrivalDate": "2020-01-05",
-          "departureDate": "2020-01-12",
-          "guests": 4
+          "arrivalDate": "2019-06-20",
+          "departureDate": "2019-06-27",
+          "guests": 3
         }
       }
     }
