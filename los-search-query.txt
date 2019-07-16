@@ -1,4 +1,4 @@
-GET lycan_main.ib_elasticsearch.properties_7687sg/_search
+GET lycan_main.thailand_villas_ref_wordpress_plugin.properties_ipdldz/_search
 {
   "_source": false,
   "query": {
@@ -13,6 +13,10 @@ GET lycan_main.ib_elasticsearch.properties_7687sg/_search
               int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
               
               if (doc['pricing.los.base64Blob'].size() == 0) {
+                return false;
+              }
+              
+              if (doc['pricing.visual.currency.keyword'].size() == 0) {
                 return false;
               }
               
@@ -55,14 +59,41 @@ GET lycan_main.ib_elasticsearch.properties_7687sg/_search
               }
               
               // Else we can return the correct price
-              float fp = Float.parseFloat(closestMatch[nights + 1]);
+              double fp = Double.parseDouble(closestMatch[nights + 1]);
+              
+              // We now need to see if we need to convert or not
+              String currentCurrency = doc['pricing.visual.currency.keyword'][0];
+              
+              double exchangeRate = 1;
+              
+              if (params.containsKey('targetCurrency')) { 
+                if (currentCurrency.compareTo(params.targetCurrency) != 0) {
+                  // We need to exchange
+                  if (
+                    params.exchangeCurrencyMap.containsKey(params.targetCurrency) && 
+                    params.exchangeCurrencyMap[params.targetCurrency].containsKey(currentCurrency)
+                  ) {
+                    exchangeRate = (double) params.exchangeCurrencyMap.get(params.targetCurrency).get(currentCurrency);
+                    currentCurrency = params.targetCurrency;
+                    fp = fp / exchangeRate;
+                  }
+                }
+              }
               
               return fp > 0 && fp >= params.minimumPrice && fp <= params.maximumPrice;
 """,
             "lang": "painless",
             "params": {
-              "arrivalDate": "2019-06-20",
-              "departureDate": "2019-06-27",
+              "targetCurrency": "THB",
+              "exchangeCurrencyMap": {
+                "THB": {
+                  "GBP": 0.0258332,
+                  "USD": 0.032,
+                  "EUR": 0.029
+                }
+              },
+              "arrivalDate": "2020-01-01",
+              "departureDate": "2020-01-07",
               "guests": 3,
               "minimumPrice": 0,
               "maximumPrice": 999999
@@ -85,6 +116,10 @@ GET lycan_main.ib_elasticsearch.properties_7687sg/_search
                 return null;
               }
               
+              if (doc['pricing.visual.currency.keyword'].size() == 0) {
+                return null;
+              }
+              
               String losBase64 = doc['pricing.los.base64Blob'].get(0).utf8ToString();
               String[] records = /\n/.split(losBase64);
               
@@ -123,16 +158,46 @@ GET lycan_main.ib_elasticsearch.properties_7687sg/_search
                 return null;
               }
               
+              // We now need to see if we need to convert or not
+              String currentCurrency = doc['pricing.visual.currency.keyword'][0];
+               // + 1 due to there being a date & guest part (+2) but an offset (-1)
+              double currentPrice = Double.parseDouble(closestMatch[nights + 1]);
+              
+              double exchangeRate = 1;
+              
+              if (params.containsKey('targetCurrency')) {
+                if (currentCurrency.compareTo(params.targetCurrency) != 0) {
+                  // We need to exchange
+                  if (
+                    params.exchangeCurrencyMap.containsKey(params.targetCurrency) && 
+                    params.exchangeCurrencyMap[params.targetCurrency].containsKey(currentCurrency)
+                  ) {
+                    exchangeRate = (double) params.exchangeCurrencyMap.get(params.targetCurrency).get(currentCurrency);
+                    currentCurrency = params.targetCurrency;
+                    currentPrice = currentPrice / exchangeRate;
+                  }
+                }
+              }
+              
               // Else we can return the correct price
               return [
-                Float.parseFloat(closestMatch[nights + 1]), // + 1 due to there being a date & guest part (+2) but an offset (-1)
+                currentPrice,
+                currentCurrency,
                 closestMatch
               ];
 """,
         "lang": "painless",
         "params": {
-          "arrivalDate": "2019-06-20",
-          "departureDate": "2019-06-27",
+          "targetCurrency": "THB",
+          "exchangeCurrencyMap": {
+              "THB": {
+                "GBP": 0.0258332,
+                "USD": 0.032,
+                "EUR": 0.029
+              }
+          },
+          "arrivalDate": "2020-01-01",
+          "departureDate": "2020-01-07",
           "guests": 3
         }
       }
