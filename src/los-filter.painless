@@ -7,6 +7,10 @@ if (doc['pricing.los.base64Blob'].size() == 0) {
   return false;
 }
 
+if (doc['pricing.visual.currency.keyword'].size() == 0) {
+  return false;
+}
+
 String losBase64 = doc['pricing.los.base64Blob'].get(0).utf8ToString();
 String[] records = /\n/.split(losBase64);
 
@@ -46,6 +50,25 @@ if (closestMatch === null) {
 }
 
 // Else we can return the correct price
-float fp = Float.parseFloat(closestMatch[nights + 1]);
+double fp = Double.parseDouble(closestMatch[nights + 1]);
+
+// We now need to see if we need to convert or not
+String currentCurrency = doc['pricing.visual.currency.keyword'][0];
+
+double exchangeRate = 1;
+
+if (params.containsKey('targetCurrency')) { 
+  if (currentCurrency.compareTo(params.targetCurrency) != 0) {
+    // We need to exchange
+    if (
+      params.exchangeCurrencyMap.containsKey(params.targetCurrency) && 
+      params.exchangeCurrencyMap[params.targetCurrency].containsKey(currentCurrency)
+    ) {
+      exchangeRate = (double) params.exchangeCurrencyMap.get(params.targetCurrency).get(currentCurrency);
+      currentCurrency = params.targetCurrency;
+      fp = fp / exchangeRate;
+    }
+  }
+}
 
 return fp > 0 && fp >= params.minimumPrice && fp <= params.maximumPrice;
