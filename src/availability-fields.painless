@@ -1,5 +1,5 @@
 ArrayList stateList = new ArrayList();
-if (doc['unitAvailability.dateRange.startDate'].size() == 0) {
+if (doc['unitAvailability.dateRange.startDate'].size() == 0 || doc['unitAvailability.configuration'].size() == 0) {
     stateList.add("UNIT_AVAILABILITY_NOT_FOUND");
     return stateList;
 }
