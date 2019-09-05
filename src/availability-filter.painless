@@ -1,4 +1,4 @@
-if (doc['unitAvailability.dateRange.startDate'].size() == 0) {
+if (doc['unitAvailability.dateRange.startDate'].size() == 0 || doc['unitAvailability.configuration'].size() == 0) {
     return false;
 }
 
