@@ -6,7 +6,7 @@ GET /lycan_main.lake_como_villas.properties_m3v4bi/_search
       "script": {
         "source": """
               ArrayList stateList = new ArrayList();
-              if (doc['unitAvailability.dateRange.startDate'].size() == 0 || doc['unitAvailability.configuration'].size() == 0) {
+              if (doc['unitAvailability.dateRange.startDate'].size() == 0 || doc['unitAvailability.configuration.availability.keyword'].size() == 0) {
                   stateList.add("UNIT_AVAILABILITY_NOT_FOUND");
                   return stateList;
               }
