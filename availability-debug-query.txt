@@ -90,7 +90,7 @@ GET /lycan_main.lake_como_villas.properties_m3v4bi/_search
     "sequenceChecked": {
       "script": {
         "source": """
-              if (doc['unitAvailability.dateRange.startDate'].size() == 0 || doc['unitAvailability.configuration'].size() == 0) {
+              if (doc['unitAvailability.dateRange.startDate'].size() == 0 || doc['unitAvailability.configuration.availability.keyword'].size() == 0) {
                   return ["UNIT_AVAILABILITY_NOT_FOUND"];
               }
             
@@ -143,7 +143,7 @@ GET /lycan_main.lake_como_villas.properties_m3v4bi/_search
         "script": {
           "script": {
             "source": """
-                          if (doc['unitAvailability.dateRange.startDate'].size() == 0 || doc['unitAvailability.configuration'].size() == 0) {
+                          if (doc['unitAvailability.dateRange.startDate'].size() == 0 || doc['unitAvailability.configuration.availability.keyword'].size() == 0) {
                             return false;
                           }
                         
