@@ -17,34 +17,49 @@ LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDat
 
 int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
 if (uaDiffDays < 0) {
-    throw new Exception("Cannot run query against past dates");
+  throw new Exception("Cannot run query against past dates");
 }
 
-String[] minStayList = /,/.split(doc['unitAvailability.configuration.minStay.keyword'].value);
-String[] maxStayList = /,/.split(doc['unitAvailability.configuration.maxStay.keyword'].value);
-char[] changeoverList = doc['unitAvailability.configuration.changeover.keyword'].value.toCharArray();
+String[] minStayList;
+if (doc['unitAvailability.configuration.minStay.keyword'].size() != 0) {
+  minStayList = /,/.split(doc['unitAvailability.configuration.minStay.keyword'].value);
+}
 
+String[] maxStayList;
+if (doc['unitAvailability.configuration.maxStay.keyword'].size() != 0) {
+  maxStayList = /,/.split(doc['unitAvailability.configuration.maxStay.keyword'].value);
+}
+
+char[] changeoverList;
+if (doc['unitAvailability.configuration.changeover.keyword'].size() != 0) {
+  changeoverList = doc['unitAvailability.configuration.changeover.keyword'].value.toCharArray();
+}
 // 1 = arrival, 2 = departure, 3 = both 0 = neither
 
 int arrivalIndex = uaDiffDays;
 int departureIndex = uaDiffDays + nights;
 
 // Lets get arrival and departure
-char arrival = changeoverList[arrivalIndex];
-char departure = changeoverList[departureIndex];
+if (changeoverList !== null) {
+  char arrival = changeoverList[arrivalIndex];
+  char departure = changeoverList[departureIndex];
 
-if (!arrival.toString().equals("1") && !arrival.toString().equals("3")) {
+  if (!arrival.toString().equals("1") && !arrival.toString().equals("3")) {
     stateList.add("CHANGEOVER_ARRIVAL_NOT_SATISFIED");
-}
+  }
 
-if (!departure.toString().equals("2") &&! departure.toString().equals("3")) {
+  if (!departure.toString().equals("2") &&! departure.toString().equals("3")) {
     stateList.add("CHANGEOVER_DEPARTURE_NOT_SATISFIED");
+  }
+} else {
+  stateList.add("CHANGEOVER_NOT_FOUND");
 }
 
-int minStay = Integer.parseInt(minStayList[arrivalIndex]);
-int maxStay = Integer.parseInt(maxStayList[departureIndex]);
+if (minStayList !== null) {            
 
-if (nights < minStay) {
+  int minStay = Integer.parseInt(minStayList[arrivalIndex]);
+
+  if (nights < minStay) {
     // We want to see if this minimum stay can be made valid by checking ahead on the availability string
     // Do this by adding the difference onto the nights and check if that is valid
     // We subtract one as the departure day can be a N, with removing that we can just check
@@ -54,20 +69,31 @@ if (nights < minStay) {
 
     String as = doc['unitAvailability.configuration.availability.keyword'].value;
     if (uaDiffDays > as.length()) {
-        throw new Exception(as.length() + "");
+      throw new Exception(as.length() + "");
     }
 
     String asSpliced = as.substring(uaDiffDays, futureNightsSequence).toString();
 
     if (asSpliced.indexOf('N') < 0) {
-        stateList.add("MINIMUM_STAY_NOT_SATISFIED_WITH_AVAILABILITY")
+      stateList.add("MINIMUM_STAY_NOT_SATISFIED_WITH_AVAILABILITY")
     } else {
-        stateList.add("MINIMUM_STAY_NOT_SATISFIED");
+      stateList.add("MINIMUM_STAY_NOT_SATISFIED");
     }
+
+  }
+
+} else {
+  stateList.add("MINIMUM_STAY_NOT_FOUND");
 }
 
-if (nights > maxStay) {
+if (maxStayList !== null) {
+  int maxStay = Integer.parseInt(maxStayList[departureIndex]);
+
+  if (nights > maxStay) {
     stateList.add("MAXIMUM_STAY_NOT_SATISFIED");
+  }
+} else {
+  stateList.add("MAXIMUM_STAY_NOT_FOUND");
 }
 
 return stateList;
