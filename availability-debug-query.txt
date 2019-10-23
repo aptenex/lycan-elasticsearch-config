@@ -94,40 +94,82 @@ GET /lycan_main.lake_como_villas.properties_m3v4bi/_search
                   return ["UNIT_AVAILABILITY_NOT_FOUND"];
               }
             
-              // Get the difference in days between the arrival and departure
-              LocalDate cArrival = LocalDate.parse(params.arrivalDate);
-              LocalDate cDeparture = LocalDate.parse(params.departureDate);
+              if (params['arrivalDate'] !== null && params['departureDate'] !== null) {
+                // Get the difference in days between the arrival and departure
+                LocalDate cArrival = LocalDate.parse(params.arrivalDate);
+                LocalDate cDeparture = LocalDate.parse(params.departureDate);
 
-              int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
+                int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
 
-              // Get the difference in days between the arrival
-              // and unitAvailability start date sequence
+                // Get the difference in days between the arrival
+                // and unitAvailability start date sequence
 
-              LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDate();
+                LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDate();
 
-              // We add 1 as arrays start at 0
-              int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
-              if (uaDiffDays < 0) {
-                throw new Exception("Cannot run query against past dates");
+                int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
+                if (uaDiffDays < 0) {
+                  return false;
+                }
+                String as = doc['unitAvailability.configuration.availability.keyword'].value;
+
+                if (uaDiffDays > as.length()) {
+                  throw new Exception(as.length() + "");
+                }
+
+                int nightsSequence = (uaDiffDays + nights);
+
+                String asSpliced = as.substring(uaDiffDays, nightsSequence).toString();
+
+                return [
+                  'AVAILABILITY_CHECK',
+                  uaDiffDays,
+                  nightsSequence,
+                  nights,
+                  asSpliced,
+                  (asSpliced.indexOf('N') < 0)
+                ];
+              } else {
+                // We are looking for consecutive nights within a date range, this is near identical to
+                // the normal arrival/departure, except we splice out the whole range and then do a check
+                // if a certain number of Y's exist in that string
+                
+                LocalDate rangeStart = LocalDate.parse(params.startDate);
+                LocalDate rangeEnd = LocalDate.parse(params.endDate);
+                
+                LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDate();
+                String as = doc['unitAvailability.configuration.availability.keyword'].value;
+                
+                int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, rangeStart);
+                
+                if (uaDiffDays < 0) {
+                  return false;
+                }
+
+                if (uaDiffDays > as.length()) {
+                  throw new Exception(as.length() + "");
+                }
+                
+                int nightsInRange = (int) ChronoUnit.DAYS.between(rangeStart, rangeEnd);
+
+                int lengthToEnd = uaDiffDays + nightsInRange;
+
+                String asSpliced = as.substring(uaDiffDays, lengthToEnd).toString();
+                String nightsToString = '';
+                
+                for (int i = 0; i<params.nights; i++) {
+                   nightsToString = nightsToString + 'Y';
+                }
+                
+                return [
+                  'NIGHTS_AVAILABLE_IN_RANGE',
+                  uaDiffDays,
+                  nightsInRange,
+                  params.nights,
+                  asSpliced,
+                  nightsToString,
+                 (asSpliced.indexOf(nightsToString) > 0)
+                ];
               }
-              
-              String as = doc['unitAvailability.configuration.availability.keyword'].value;
-
-              if (uaDiffDays > as.length()) {
-                throw new Exception(as.length() + "");
-              }
-
-              int nightsSequence = (uaDiffDays + nights);
-
-              String asSpliced = as.substring(uaDiffDays, nightsSequence).toString();
-
-              return [
-                uaDiffDays,
-                nightsSequence,
-                nights,
-                asSpliced,
-                (asSpliced.indexOf('N') < 0)
-              ];
 """,
         "lang": "painless",
         "params": {
