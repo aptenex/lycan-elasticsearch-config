@@ -1,3 +1,4 @@
+// Elasticsearch _scripts key: lycan_los_lookup
 LocalDate cArrival = LocalDate.parse(params.arrivalDate);
 LocalDate cDeparture = LocalDate.parse(params.departureDate);
 int paramGuestCount = params.guests;
