@@ -1,3 +1,4 @@
+// Elasticsearch _scripts key: lycan_visual_pricing_filter
 if (doc['pricing.visual.currency.keyword'].size() == 0) {
   return false;
 }
