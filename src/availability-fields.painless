@@ -1,3 +1,4 @@
+// Elasticsearch _scripts key: lycan_availability_filter
 ArrayList stateList = new ArrayList();
 if (doc['unitAvailability.dateRange.startDate'].size() == 0 || doc['unitAvailability.configuration.availability.keyword'].size() == 0) {
     stateList.add("UNIT_AVAILABILITY_NOT_FOUND");
