@@ -1,3 +1,4 @@
+// Elasticsearch _scripts key: lycan_availability_filter
 if (doc['unitAvailability.dateRange.startDate'].size() == 0 || doc['unitAvailability.configuration.availability.keyword'].size() == 0) {
   return false;
 }
