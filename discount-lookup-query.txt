@@ -1,0 +1,88 @@
+GET /lycan_main.thailand_villas_ref_wordpress_plugin.properties_6g3rl4/_search
+{
+  "_source": false,
+  "script_fields": {
+    "discountsLookup": {
+      "script": {
+        "source": """
+
+            ArrayList list = new ArrayList();
+
+            if (doc.containsKey('pricing.visual')) {
+              list.add('has pricing');
+            }
+
+            if (!doc.containsKey('pricing.visual.specialDiscounts')) {
+              return list;
+            }
+
+            for (int i = 0; i < doc['pricing.visual.specialDiscounts'].size(); i++) {
+
+              HashMap result = new HashMap();
+
+              for (int d = 0; d < doc['pricing.visual.specialDiscounts'][i]['dateRanges'].size(); d++) {
+
+                result.put(d + 10000, 'looped dr');
+
+              }
+
+              result.put(i, 'looped sd');
+
+              list.add(result);
+
+            }
+
+            list.add("TEST");
+
+            return list;
+        """,
+        "lang": "painless",
+        "params": {
+          "arrivalDate": "2020-12-05",
+          "departureDate": "2020-12-19"
+        }
+      }
+    }
+  },
+  "query": {
+    "function_score": {
+      "functions": [
+        {
+          "random_score": {
+            "seed": [
+              2020,
+              34
+            ],
+            "field": "_seq_no"
+          }
+        }
+      ],
+      "query": {
+        "bool": {
+          "must": [
+            {
+               "nested":{
+                  "path":"pricing.visual.specialDiscounts.dateRanges",
+                  "query":{
+                     "bool":{
+                        "must":[
+                           {
+                              "range":{
+                                 "pricing.visual.specialDiscounts.dateRanges.startDate":{
+                                    "gte":"2020-08-01",
+                                    "lte":"2022-12-31"
+                                 }
+                              }
+                           }
+                        ]
+                     }
+                  }
+               }
+            }
+          ]
+        }
+      },
+      "score_mode": "sum"
+    }
+  }
+}
