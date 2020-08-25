@@ -1,40 +1,54 @@
-GET /org.*.properties/_search
+GET /lycan_main.dormoa.properties_b70dyt/_search
 {
   "_source": false,
-   "script_fields": {
-      "availabilityFailures": {
-        "script" : {
-            "source": """
-              // Get the difference in days between the arrival and departure
-              LocalDate cArrival = LocalDate.parse(params.arrivalDate);
-              LocalDate cDeparture = LocalDate.parse(params.departureDate);
+  "script_fields": {
+    "availabilityFailures": {
+      "script": {
+        "source": """
+            // Elasticsearch _scripts key: lycan_availability_lookup
+            ArrayList stateList = new ArrayList();
+            if (doc['unitAvailability.dateRange.startDate'].size() == 0 || doc['unitAvailability.configuration.availability.keyword'].size() == 0) {
+                stateList.add("UNIT_AVAILABILITY_NOT_FOUND");
+                return stateList;
+            }
 
-              int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
+            // Get the difference in days between the arrival and departure
+            LocalDate cArrival = LocalDate.parse(params.arrivalDate);
+            LocalDate cDeparture = LocalDate.parse(params.departureDate);
 
-              // Get the difference in days between the arrival
-              // and unitAvailability start date sequence
+            int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
 
-              ReadableDateTime uaStartDateTime = doc['unitAvailability.dateRange.startDate'].value;
-              LocalDate uaStart = LocalDate.of(
-                uaStartDateTime.getYear(),
-                uaStartDateTime.getMonthOfYear(),
-                uaStartDateTime.getDayOfMonth()
-              );
+            // Get the difference in days between the arrival
+            // and unitAvailability start date sequence
 
-              ArrayList stateList = new ArrayList();
+            LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDate();           
 
-              int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
+            int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
+            if (uaDiffDays < 0) {
+              throw new Exception("Cannot run query against past dates");
+            }
 
-              String[] minStayList = /,/.split(doc['unitAvailability.configuration.minStay.keyword'].value);
-              String[] maxStayList = /,/.split(doc['unitAvailability.configuration.maxStay.keyword'].value);
-              char[] changeoverList = doc['unitAvailability.configuration.changeover.keyword'].value.toCharArray();
+            String[] minStayList;
+            if (doc['unitAvailability.configuration.minStay.keyword'].size() != 0) {
+              minStayList = /,/.split(doc['unitAvailability.configuration.minStay.keyword'].value);
+            }
 
-              // 1 = arrival, 2 = departure, 3 = both 0 = neither
+            String[] maxStayList;
+            if (doc['unitAvailability.configuration.maxStay.keyword'].size() != 0) {
+              maxStayList = /,/.split(doc['unitAvailability.configuration.maxStay.keyword'].value);
+            }
 
-              int arrivalIndex = uaDiffDays;
-              int departureIndex = uaDiffDays + nights;
+            char[] changeoverList;
+            if (doc['unitAvailability.configuration.changeover.keyword'].size() != 0) {
+              changeoverList = doc['unitAvailability.configuration.changeover.keyword'].value.toCharArray();
+            }
+            // 1 = arrival, 2 = departure, 3 = both 0 = neither
 
-              // Lets get arrival and departure
+            int arrivalIndex = uaDiffDays;
+            int departureIndex = uaDiffDays + nights;
+
+            // Lets get arrival and departure
+            if (changeoverList !== null) {
               char arrival = changeoverList[arrivalIndex];
               char departure = changeoverList[departureIndex];
 
@@ -45,11 +59,13 @@ GET /org.*.properties/_search
               if (!departure.toString().equals("2") &&! departure.toString().equals("3")) {
                 stateList.add("CHANGEOVER_DEPARTURE_NOT_SATISFIED");
               }
+            } else {
+              stateList.add("CHANGEOVER_NOT_FOUND");
+            }
+
+            if (minStayList !== null) {            
 
               int minStay = Integer.parseInt(minStayList[arrivalIndex]);
-              int maxStay = Integer.parseInt(maxStayList[departureIndex]);
-
-              minStay = 6;
 
               if (nights < minStay) {
                 // We want to see if this minimum stay can be made valid by checking ahead on the availability string
@@ -74,23 +90,37 @@ GET /org.*.properties/_search
 
               }
 
+            } else {
+              stateList.add("MINIMUM_STAY_NOT_FOUND");
+            }
+
+            if (maxStayList !== null) {
+              int maxStay = Integer.parseInt(maxStayList[departureIndex]);
+
               if (nights > maxStay) {
                 stateList.add("MAXIMUM_STAY_NOT_SATISFIED");
               }
-
-              return stateList;
-
-            """,
-            "lang": "painless",
-            "params" : {
-                "arrivalDate" : "2018-07-26",
-                "departureDate": "2018-07-31"
+            } else {
+              stateList.add("MAXIMUM_STAY_NOT_FOUND");
             }
-         }
-      },
-      "sequenceChecked": {
-        "script" : {
-            "source": """
+
+            return stateList;
+        """,
+        "lang": "painless",
+        "params": {
+          "arrivalDate": "2020-12-05",
+          "departureDate": "2020-12-19"
+        }
+      }
+    },
+    "sequenceChecked": {
+      "script": {
+        "source": """
+            if (doc['unitAvailability.dateRange.startDate'].size() == 0 || doc['unitAvailability.configuration.availability.keyword'].size() == 0) {
+                return ["UNIT_AVAILABILITY_NOT_FOUND"];
+            }
+          
+            if (!params.containsKey('minimumNights')) {
               // Get the difference in days between the arrival and departure
               LocalDate cArrival = LocalDate.parse(params.arrivalDate);
               LocalDate cDeparture = LocalDate.parse(params.departureDate);
@@ -100,16 +130,12 @@ GET /org.*.properties/_search
               // Get the difference in days between the arrival
               // and unitAvailability start date sequence
 
-              ReadableDateTime uaStartDateTime = doc['unitAvailability.dateRange.startDate'].value;
-              LocalDate uaStart = LocalDate.of(
-                uaStartDateTime.getYear(),
-                uaStartDateTime.getMonthOfYear(),
-                uaStartDateTime.getDayOfMonth()
-              );
+              LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDate();
 
-              // We add 1 as arrays start at 0
               int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
-
+              if (uaDiffDays < 0) {
+                return false;
+              }
               String as = doc['unitAvailability.configuration.availability.keyword'].value;
 
               if (uaDiffDays > as.length()) {
@@ -121,67 +147,111 @@ GET /org.*.properties/_search
               String asSpliced = as.substring(uaDiffDays, nightsSequence).toString();
 
               return [
+                'AVAILABILITY_CHECK',
                 uaDiffDays,
                 nightsSequence,
                 nights,
                 asSpliced,
                 (asSpliced.indexOf('N') < 0)
               ];
+            } else {
+              // We are looking for consecutive nights within a date range, this is near identical to
+              // the normal arrival/departure, except we splice out the whole range and then do a check
+              // if a certain number of Y's exist in that string
+              
+              LocalDate rangeStart = LocalDate.parse(params.arrivalDate);
+              LocalDate rangeEnd = LocalDate.parse(params.departureDate);
+              
+              LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDate();
+              String as = doc['unitAvailability.configuration.availability.keyword'].value;
+              
+              int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, rangeStart);
+              int nightsInRange = (int) ChronoUnit.DAYS.between(rangeStart, rangeEnd);
+              
+              if (uaDiffDays < 0) {
+                return false;
+              }
 
-            """,
-            "lang": "painless",
-            "params" : {
-                "arrivalDate" : "2018-07-26",
-                "departureDate": "2018-08-01"
+              if (uaDiffDays > as.length()) {
+                throw new Exception(as.length() + "");
+              }
+              
+              int checkNights = params.minimumNights;
+
+              int lengthToEnd = uaDiffDays + nightsInRange;
+
+              String asSpliced = as.substring(uaDiffDays, lengthToEnd).toString();
+              String nightsToString = String.join('', Collections.nCopies(params.minimumNights, 'Y'));
+              
+              return [
+                'NIGHTS_AVAILABLE_IN_RANGE',
+                nightsInRange,
+                params.minimumNights,
+                asSpliced,
+                nightsToString,
+                asSpliced.contains(nightsToString)
+              ];
             }
-         }
-      }
-    },
-    "query": {
-        "bool" : {
-            "must" : {
-                "script" : {
-                    "script" : {
-                        "source": """
-                          // Get the difference in days between the arrival and departure
-                          LocalDate cArrival = LocalDate.parse(params.arrivalDate);
-                          LocalDate cDeparture = LocalDate.parse(params.departureDate);
-
-                          int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
-
-                          // Get the difference in days between the arrival
-                          // and unitAvailability start date sequence
-
-                          ReadableDateTime uaStartDateTime = doc['unitAvailability.dateRange.startDate'].value;
-                          LocalDate uaStart = LocalDate.of(
-                            uaStartDateTime.getYear(),
-                            uaStartDateTime.getMonthOfYear(),
-                            uaStartDateTime.getDayOfMonth()
-                          );
-
-                          int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
-
-                          String as = doc['unitAvailability.configuration.availability.keyword'].value;
-
-                          if (uaDiffDays > as.length()) {
-                            throw new Exception(as.length() + "");
-                          }
-
-                          int nightsSequence = (uaDiffDays + nights);
-
-                          String asSpliced = as.substring(uaDiffDays, nightsSequence).toString();
-
-                          return (asSpliced.indexOf('N') < 0);
-
-                        """,
-                        "lang": "painless",
-                        "params" : {
-                            "arrivalDate" : "2019-07-26",
-                            "departureDate": "2019-08-02"
-                        }
-                     }
-                }
-            }
+""",
+        "lang": "painless",
+        "params": {
+          "arrivalDate": "2020-08-18",
+          "departureDate": "2020-10-19",
+          "minimumNights": 7
         }
+      }
     }
+  },
+  "query": {
+    "bool": {
+      "must": {
+        "script": {
+          "script": {
+            "source": """
+                if (doc['unitAvailability.dateRange.startDate'].size() == 0 || doc['unitAvailability.configuration.availability.keyword'].size() == 0) {
+                  return false;
+                }
+              
+                // Get the difference in days between the arrival and departure
+                LocalDate cArrival = LocalDate.parse(params.arrivalDate);
+                LocalDate cDeparture = LocalDate.parse(params.departureDate);
+
+                int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
+
+                // Get the difference in days between the arrival
+                // and unitAvailability start date sequence
+
+                LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDate();
+
+                int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
+                if (uaDiffDays < 0) {
+                  return false;
+                }
+                String as = doc['unitAvailability.configuration.availability.keyword'].value;
+
+                if (uaDiffDays > as.length()) {
+                  throw new Exception(as.length() + "");
+                }
+
+                int nightsSequence = (uaDiffDays + nights);
+
+                String asSpliced = as.substring(uaDiffDays, nightsSequence).toString();
+
+                if (params.containsKey('minimumNights')) {
+                  return asSpliced.contains(String.join('', Collections.nCopies(params.minimumNights, 'Y')));
+                }
+
+                return (asSpliced.indexOf('N') < 0);
+""",
+            "lang": "painless",
+            "params": {
+              "arrivalDate": "2020-08-18",
+              "departureDate": "2020-10-19",
+              "minimumNights": 7
+            }
+          }
+        }
+      }
+    }
+  }
 }

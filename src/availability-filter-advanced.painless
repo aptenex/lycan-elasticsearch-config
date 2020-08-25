@@ -1,0 +1,86 @@
+// ES Script Name: lycan_availability_filter_advanced
+if (doc['unitAvailability.dateRange.startDate'].size() == 0 || doc['unitAvailability.configuration.availability.keyword'].size() == 0) {
+  return false;
+}
+
+// Get the difference in days between the arrival and departure
+LocalDate cArrival = LocalDate.parse(params.arrivalDate);
+LocalDate cDeparture = LocalDate.parse(params.departureDate);
+
+int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
+
+// Get the difference in days between the arrival
+// and unitAvailability start date sequence
+
+LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDate();
+
+int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
+if (uaDiffDays < 0) {
+  return false;
+}
+String as = doc['unitAvailability.configuration.availability.keyword'].value;
+
+if (uaDiffDays > as.length()) {
+  throw new Exception(as.length() + "");
+}
+
+if (!params.containsKey('minimumNights')) {
+
+  String[] minStayList;
+  if (doc['unitAvailability.configuration.minStay.keyword'].size() != 0) {
+    minStayList = /,/.split(doc['unitAvailability.configuration.minStay.keyword'].value);
+  }
+
+  String[] maxStayList;
+  if (doc['unitAvailability.configuration.maxStay.keyword'].size() != 0) {
+    maxStayList = /,/.split(doc['unitAvailability.configuration.maxStay.keyword'].value);
+  }
+
+  char[] changeoverList;
+  if (doc['unitAvailability.configuration.changeover.keyword'].size() != 0) {
+    changeoverList = doc['unitAvailability.configuration.changeover.keyword'].value.toCharArray();
+  }
+  // 1 = arrival, 2 = departure, 3 = both 0 = neither
+
+  int arrivalIndex = uaDiffDays;
+  int departureIndex = uaDiffDays + nights;
+
+  // Lets get arrival and departure
+  if (changeoverList !== null) {
+    char arrival = changeoverList[arrivalIndex];
+    char departure = changeoverList[departureIndex];
+
+    if (!arrival.toString().equals("1") && !arrival.toString().equals("3")) {
+      return false;
+    }
+
+    if (!departure.toString().equals("2") &&! departure.toString().equals("3")) {
+      return false;
+    }
+  }
+
+  if (minStayList !== null) {            
+    int minStay = Integer.parseInt(minStayList[arrivalIndex]);
+    if (nights < minStay) {
+      return false;
+    }
+  }
+
+  if (maxStayList !== null) {
+    int maxStay = Integer.parseInt(maxStayList[departureIndex]);
+    if (nights > maxStay) {
+      return false;
+    }
+  }
+
+}
+
+int nightsSequence = (uaDiffDays + nights);
+
+String asSpliced = as.substring(uaDiffDays, nightsSequence).toString();
+
+if (params.containsKey('minimumNights')) {
+  return asSpliced.contains(String.join('', Collections.nCopies(params.minimumNights, 'Y')));
+}
+
+return (asSpliced.indexOf('N') < 0);

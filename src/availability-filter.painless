@@ -1,34 +1,72 @@
-// Get the difference in days between the arrival and departure
-LocalDate cArrival = LocalDate.parse(params.arrivalDate);
-LocalDate cDeparture = LocalDate.parse(params.departureDate);
+// Elasticsearch _scripts key: lycan_availability_filter
+if (doc['unitAvailability.dateRange.startDate'].size() == 0 || doc['unitAvailability.configuration.availability.keyword'].size() == 0) {
+  return false;
+}
 
-int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
+if (params['arrivalDate'] !== null && params['departureDate'] !== null) {
+  // This is the standard availability check used to filter if properties are available or not
 
-// Get the difference in days between the arrival
-// and unitAvailability start date sequence
+  // This takes the params "arrivalDate" and "departureDate"
 
-ReadableDateTime uaStartDateTime = doc['unitAvailability.dateRange.startDate'].value;
-LocalDate uaStart = LocalDate.of(
-    uaStartDateTime.getYear(),
-    uaStartDateTime.getMonthOfYear(),
-    uaStartDateTime.getDayOfMonth()
-);
+  // Get the difference in days between the arrival and departure
+  LocalDate cArrival = LocalDate.parse(params.arrivalDate);
+  LocalDate cDeparture = LocalDate.parse(params.departureDate);
 
-int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
+  int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
 
-if (doc['unitAvailability.configuration.availability.keyword'].value != null) {
-    String as = doc['unitAvailability.configuration.availability.keyword'].value;
+  // Get the difference in days between the arrival
+  // and unitAvailability start date sequence
 
-    if (uaDiffDays > as.length()) {
-        throw new Exception(as.length() + "");
-    }
+  LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDate();
 
-    int nightsSequence = (uaDiffDays + nights);
+  int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
+  if (uaDiffDays < 0) {
+    return false;
+  }
+  String as = doc['unitAvailability.configuration.availability.keyword'].value;
 
-    String asSpliced = as.substring(uaDiffDays, nightsSequence).toString();
+  if (uaDiffDays > as.length()) {
+    throw new Exception(as.length() + "");
+  }
 
-    return (asSpliced.indexOf('N') < 0);
+  int nightsSequence = (uaDiffDays + nights);
+
+  String asSpliced = as.substring(uaDiffDays, nightsSequence).toString();
+
+  return (asSpliced.indexOf('N') < 0);
 } else {
-    // No availability data - CHANGE THIS TO YOUR PREFERENCE (true for available by default, false otherwise)
-    return true;
+  // This takes the params "startDate", "endDate" and "nights"
+
+  // We are looking for consecutive nights within a date range, this is near identical to
+  // the normal arrival/departure, except we splice out the whole range and then do a check
+  // if a certain number of Y's exist in that string
+
+  LocalDate rangeStart = LocalDate.parse(params.startDate);
+  LocalDate rangeEnd = LocalDate.parse(params.endDate);
+
+  LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDate();
+  String as = doc['unitAvailability.configuration.availability.keyword'].value;
+
+  int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, rangeStart);
+
+  if (uaDiffDays < 0) {
+    return false;
+  }
+
+  if (uaDiffDays > as.length()) {
+    throw new Exception(as.length() + "");
+  }
+
+  int nightsInRange = (int) ChronoUnit.DAYS.between(rangeStart, rangeEnd);
+
+  int lengthToEnd = uaDiffDays + nightsInRange;
+
+  String asSpliced = as.substring(uaDiffDays, lengthToEnd).toString();
+  String nightsToString = '';
+
+  for (int i = 0; i<params.nights; i++) {
+     nightsToString = nightsToString + 'Y';
+  }
+
+  return (asSpliced.indexOf(nightsToString) > 0);
 }

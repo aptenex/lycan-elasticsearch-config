@@ -1,0 +1,206 @@
+GET lycan_main.thailand_villas_ref_wordpress_plugin.properties_ipdldz/_search
+{
+  "_source": false,
+  "query": {
+    "bool": {
+      "must": {
+        "script": {
+          "script": {
+            "source": """
+              LocalDate cArrival = LocalDate.parse(params.arrivalDate);
+              LocalDate cDeparture = LocalDate.parse(params.departureDate);
+              int paramGuestCount = params.guests;
+              int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
+              
+              if (doc['pricing.los.base64Blob'].size() == 0) {
+                return false;
+              }
+              
+              if (doc['pricing.visual.currency.keyword'].size() == 0) {
+                return false;
+              }
+              
+              String losBase64 = doc['pricing.los.base64Blob'].get(0).utf8ToString();
+              String[] records = /\n/.split(losBase64);
+              
+              int currentClosestMatchDiff = 99;
+              String[] closestMatch;
+              
+              for(int i = 0; i < records.length; i++) {
+                String[] recordParts = /,/.split(records[i]);
+                String recordDate = recordParts[0];
+                // check if date matches
+                if (recordDate == params.arrivalDate) {
+                  // We now need to match the guest count, if no match exists closest one that is greater than it
+                  int guestCount = Integer.parseInt(recordParts[1]);
+                  
+                  if (guestCount == paramGuestCount) {
+                    closestMatch = recordParts;
+                    currentClosestMatchDiff = 0;
+                    
+                    break;
+                  } else {
+                    // we need to get the diff 
+                    int guestDiff = guestCount - paramGuestCount; 
+  
+                    if (guestDiff > 0 && guestDiff < currentClosestMatchDiff) {
+                      // Ok guest diff means this count is higher - so we can use it
+                      currentClosestMatchDiff = guestDiff;
+                      closestMatch = recordParts;
+                    }
+                  }
+                  
+                }
+              }
+              
+              // If we've reached this point and the closestMatch is still null then no available price was available
+              if (closestMatch === null) {
+                return false;
+              }
+              
+              // Else we can return the correct price
+              double fp = Double.parseDouble(closestMatch[nights + 1]);
+              
+              // We now need to see if we need to convert or not
+              String currentCurrency = doc['pricing.visual.currency.keyword'][0];
+              
+              double exchangeRate = 1;
+              
+              if (params.containsKey('targetCurrency')) { 
+                if (currentCurrency.compareTo(params.targetCurrency) != 0) {
+                  // We need to exchange
+                  if (
+                    params.exchangeCurrencyMap.containsKey(params.targetCurrency) && 
+                    params.exchangeCurrencyMap[params.targetCurrency].containsKey(currentCurrency)
+                  ) {
+                    exchangeRate = (double) params.exchangeCurrencyMap.get(params.targetCurrency).get(currentCurrency);
+                    currentCurrency = params.targetCurrency;
+                    fp = fp / exchangeRate;
+                  }
+                }
+              }
+              
+              return fp > 0 && fp >= params.minimumPrice && fp <= params.maximumPrice;
+""",
+            "lang": "painless",
+            "params": {
+              "targetCurrency": "THB",
+              "exchangeCurrencyMap": {
+                "THB": {
+                  "GBP": 0.0258332,
+                  "USD": 0.032,
+                  "EUR": 0.029
+                }
+              },
+              "arrivalDate": "2020-01-01",
+              "departureDate": "2020-01-07",
+              "guests": 3,
+              "minimumPrice": 0,
+              "maximumPrice": 999999
+            }
+          }
+        }
+      }
+    }
+  },
+  "script_fields": {
+    "losPriceLookup": {
+      "script": {
+        "source": """
+              LocalDate cArrival = LocalDate.parse(params.arrivalDate);
+              LocalDate cDeparture = LocalDate.parse(params.departureDate);
+              int paramGuestCount = params.guests;
+              int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
+              
+              if (doc['pricing.los.base64Blob'].size() == 0) {
+                return null;
+              }
+              
+              if (doc['pricing.visual.currency.keyword'].size() == 0) {
+                return null;
+              }
+              
+              String losBase64 = doc['pricing.los.base64Blob'].get(0).utf8ToString();
+              String[] records = /\n/.split(losBase64);
+              
+              int currentClosestMatchDiff = 99;
+              String[] closestMatch;
+              
+              for(int i = 0; i < records.length; i++) {
+                String[] recordParts = /,/.split(records[i]);
+                String recordDate = recordParts[0];
+                // check if date matches
+                if (recordDate == params.arrivalDate) {
+                  // We now need to match the guest count, if no match exists closest one that is greater than it
+                  int guestCount = Integer.parseInt(recordParts[1]);
+                  
+                  if (guestCount == paramGuestCount) {
+                    closestMatch = recordParts;
+                    currentClosestMatchDiff = 0;
+                    
+                    break;
+                  } else {
+                    // we need to get the diff 
+                    int guestDiff = guestCount - paramGuestCount; 
+  
+                    if (guestDiff > 0 && guestDiff < currentClosestMatchDiff) {
+                      // Ok guest diff means this count is higher - so we can use it
+                      currentClosestMatchDiff = guestDiff;
+                      closestMatch = recordParts;
+                    }
+                  }
+                  
+                }
+              }
+              
+              // If we've reached this point and the closestMatch is still null then no available price was available
+              if (closestMatch === null) {
+                return null;
+              }
+              
+              // We now need to see if we need to convert or not
+              String currentCurrency = doc['pricing.visual.currency.keyword'][0];
+               // + 1 due to there being a date & guest part (+2) but an offset (-1)
+              double currentPrice = Double.parseDouble(closestMatch[nights + 1]);
+              
+              double exchangeRate = 1;
+              
+              if (params.containsKey('targetCurrency')) {
+                if (currentCurrency.compareTo(params.targetCurrency) != 0) {
+                  // We need to exchange
+                  if (
+                    params.exchangeCurrencyMap.containsKey(params.targetCurrency) && 
+                    params.exchangeCurrencyMap[params.targetCurrency].containsKey(currentCurrency)
+                  ) {
+                    exchangeRate = (double) params.exchangeCurrencyMap.get(params.targetCurrency).get(currentCurrency);
+                    currentCurrency = params.targetCurrency;
+                    currentPrice = currentPrice / exchangeRate;
+                  }
+                }
+              }
+              
+              // Else we can return the correct price
+              return [
+                currentPrice,
+                currentCurrency,
+                closestMatch
+              ];
+""",
+        "lang": "painless",
+        "params": {
+          "targetCurrency": "THB",
+          "exchangeCurrencyMap": {
+              "THB": {
+                "GBP": 0.0258332,
+                "USD": 0.032,
+                "EUR": 0.029
+              }
+          },
+          "arrivalDate": "2020-01-01",
+          "departureDate": "2020-01-07",
+          "guests": 3
+        }
+      }
+    }
+  }
+}

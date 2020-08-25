@@ -1,0 +1,60 @@
+GET lycan_main.thailand_villas_ref_wordpress_plugin.properties_ipdldz/_search
+{
+  "_source": false,
+  "query": {
+    "bool": {
+      "must": {
+        "script": {
+          "script": {
+            "source": """
+              if (doc['pricing.visual.currency.keyword'].size() == 0) {
+                return false;
+              }
+              
+              if (doc['pricing.visual.nightlyLow'].size() == 0) {
+                return false;
+              }
+              
+              // Else we can return the correct price
+              double fp = (double) (doc['pricing.visual.nightlyLow'].getValue());
+              
+              // We now need to see if we need to convert or not
+              String currentCurrency = doc['pricing.visual.currency.keyword'][0];
+              
+              double exchangeRate = 1;
+              
+              if (params.containsKey('targetCurrency')) { 
+                if (currentCurrency.compareTo(params.targetCurrency) != 0) {
+                  // We need to exchange
+                  if (
+                    params.exchangeCurrencyMap.containsKey(params.targetCurrency) && 
+                    params.exchangeCurrencyMap[params.targetCurrency].containsKey(currentCurrency)
+                  ) {
+                    exchangeRate = (double) (params.exchangeCurrencyMap.get(params.targetCurrency).get(currentCurrency));
+                    currentCurrency = params.targetCurrency;
+                    fp = fp / exchangeRate;
+                  }
+                }
+              }
+              
+              return fp > 0 && fp >= params.minimumPrice && fp <= params.maximumPrice;
+""",
+            "lang": "painless",
+            "params": {
+              "targetCurrency": "THB",
+              "exchangeCurrencyMap": {
+                "THB": {
+                  "GBP": 0.0258332,
+                  "USD": 0.032,
+                  "EUR": 0.029
+                }
+              },
+              "minimumPrice": 0,
+              "maximumPrice": 99999999
+            }
+          }
+        }
+      }
+    }
+  }
+}

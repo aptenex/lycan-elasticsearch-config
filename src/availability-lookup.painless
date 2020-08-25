@@ -1,0 +1,100 @@
+// Elasticsearch _scripts key: lycan_availability_lookup
+ArrayList stateList = new ArrayList();
+if (doc['unitAvailability.dateRange.startDate'].size() == 0 || doc['unitAvailability.configuration.availability.keyword'].size() == 0) {
+    stateList.add("UNIT_AVAILABILITY_NOT_FOUND");
+    return stateList;
+}
+
+// Get the difference in days between the arrival and departure
+LocalDate cArrival = LocalDate.parse(params.arrivalDate);
+LocalDate cDeparture = LocalDate.parse(params.departureDate);
+
+int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
+
+// Get the difference in days between the arrival
+// and unitAvailability start date sequence
+
+LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDate();           
+
+int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
+if (uaDiffDays < 0) {
+  throw new Exception("Cannot run query against past dates");
+}
+
+String[] minStayList;
+if (doc['unitAvailability.configuration.minStay.keyword'].size() != 0) {
+  minStayList = /,/.split(doc['unitAvailability.configuration.minStay.keyword'].value);
+}
+
+String[] maxStayList;
+if (doc['unitAvailability.configuration.maxStay.keyword'].size() != 0) {
+  maxStayList = /,/.split(doc['unitAvailability.configuration.maxStay.keyword'].value);
+}
+
+char[] changeoverList;
+if (doc['unitAvailability.configuration.changeover.keyword'].size() != 0) {
+  changeoverList = doc['unitAvailability.configuration.changeover.keyword'].value.toCharArray();
+}
+// 1 = arrival, 2 = departure, 3 = both 0 = neither
+
+int arrivalIndex = uaDiffDays;
+int departureIndex = uaDiffDays + nights;
+
+// Lets get arrival and departure
+if (changeoverList !== null) {
+  char arrival = changeoverList[arrivalIndex];
+  char departure = changeoverList[departureIndex];
+
+  if (!arrival.toString().equals("1") && !arrival.toString().equals("3")) {
+    stateList.add("CHANGEOVER_ARRIVAL_NOT_SATISFIED");
+  }
+
+  if (!departure.toString().equals("2") &&! departure.toString().equals("3")) {
+    stateList.add("CHANGEOVER_DEPARTURE_NOT_SATISFIED");
+  }
+} else {
+  stateList.add("CHANGEOVER_NOT_FOUND");
+}
+
+if (minStayList !== null) {            
+
+  int minStay = Integer.parseInt(minStayList[arrivalIndex]);
+
+  if (nights < minStay) {
+    // We want to see if this minimum stay can be made valid by checking ahead on the availability string
+    // Do this by adding the difference onto the nights and check if that is valid
+    // We subtract one as the departure day can be a N, with removing that we can just check
+    // for the existence of N
+    int minStayDiff = minStay - nights;
+    int futureNightsSequence = uaDiffDays + nights + minStayDiff;
+
+    String as = doc['unitAvailability.configuration.availability.keyword'].value;
+    if (uaDiffDays > as.length()) {
+      throw new Exception(as.length() + "");
+    }
+
+    String asSpliced = as.substring(uaDiffDays, futureNightsSequence).toString();
+
+    if (asSpliced.indexOf('N') < 0) {
+      stateList.add("MINIMUM_STAY_NOT_SATISFIED_WITH_AVAILABILITY")
+    } else {
+      stateList.add("MINIMUM_STAY_NOT_SATISFIED");
+    }
+
+  }
+
+} else {
+  stateList.add("MINIMUM_STAY_NOT_FOUND");
+}
+
+if (maxStayList !== null) {
+  int maxStay = Integer.parseInt(maxStayList[departureIndex]);
+
+  if (nights > maxStay) {
+    stateList.add("MAXIMUM_STAY_NOT_SATISFIED");
+  }
+} else {
+  stateList.add("MAXIMUM_STAY_NOT_FOUND");
+}
+
+return stateList;
