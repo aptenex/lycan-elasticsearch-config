@@ -9,6 +9,114 @@
         }
       }
     },
+    "$providerListingId": {
+      "type": "text",
+      "fields": {
+        "keyword": {
+          "type": "keyword",
+          "ignore_above": 256
+        }
+      }
+    },
+    "$marketing": {
+      "properties": {
+        "id": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "rentivoSlug": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "slug": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "agent": {
+          "properties": {
+            "descriptiveName": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "brandCompanyName": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "biography": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "phone": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "emails": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "logo": {
+              "properties": {
+                "publicUrl": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "width": {
+                  "type": "integer"
+                },
+                "height": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "address": {
       "properties": {
         "addressLine1": {
@@ -166,6 +274,28 @@
     },
     "headline": {
       "properties": {
+        "it": {
+          "properties": {
+            "content": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "locale": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            }
+          }
+        },
         "en": {
           "properties": {
             "content": {
@@ -202,6 +332,9 @@
           }
         },
         "bedrooms": {
+          "type": "long"
+        },
+        "bathrooms": {
           "type": "long"
         },
         "beds": {
@@ -386,6 +519,7 @@
       }
     },
     "pricing": {
+      "type": "nested",
       "properties": {
         "los": {
           "properties": {
@@ -396,6 +530,7 @@
           }
         },
         "visual": {
+          "type": "nested",
           "properties": {
             "currency": {
               "type": "text",
@@ -417,6 +552,58 @@
             },
             "nightlyHigh": {
               "type": "long"
+            },
+            "specialDiscounts": {
+              "type": "nested",
+              "properties": {
+                "dateRanges": {
+                  "type": "nested",
+                  "properties": {
+                    "startDate": {
+                      "type": "date"
+                    },
+                    "endDate": {
+                      "type": "date"
+                    }
+                  }
+                },
+                "name": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "amount": {
+                  "type": "float"
+                },
+                "type": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "category": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "minimumDaysBeforeArrival": {
+                  "type": "long"
+                },
+                "maximumDaysDaysBeforeArrival": {
+                  "type": "long"
+                }
+              }
             }
           }
         }
