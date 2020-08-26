@@ -1,4 +1,4 @@
-GET /lycan_main.thailand_villas_ref_wordpress_plugin.properties_6g3rl4/_search
+GET /lycan_main.thailand_villas_gatsby.properties_h14wdv/_search
 {
   "_source": false,
   "script_fields": {
@@ -6,40 +6,103 @@ GET /lycan_main.thailand_villas_ref_wordpress_plugin.properties_6g3rl4/_search
       "script": {
         "source": """
 
-            ArrayList list = new ArrayList();
+        ArrayList list = new ArrayList();
 
-            if (doc.containsKey('pricing.visual')) {
-              list.add('has pricing');
-            }
+        if (!params._source.containsKey('pricing')) {
+          return list;
+        }
 
-            if (!doc.containsKey('pricing.visual.specialDiscounts')) {
-              return list;
-            }
+        if (!params._source.pricing.containsKey('visual')) {
+          return list;
+        }
 
-            for (int i = 0; i < doc['pricing.visual.specialDiscounts'].size(); i++) {
+        if (!params._source.pricing.visual.containsKey('specialDiscounts')) {
+          return list;
+        }
 
-              HashMap result = new HashMap();
+        ArrayList sd = params._source.pricing.visual.specialDiscounts;
 
-              for (int d = 0; d < doc['pricing.visual.specialDiscounts'][i]['dateRanges'].size(); d++) {
+        for (int i = 0; i < sd.size(); i++) {
+          HashMap result = new HashMap();
 
-                result.put(d + 10000, 'looped dr');
+          HashMap sdItem = sd[i];
 
+          result.put('discount', sdItem);
+
+          if (sdItem.category == "DAYS_BEFORE_ARRIVAL") {
+            if (
+              params.containsKey('todaysDate') &&
+              params.todaysDate != null &&
+              params.containsKey('arrivalDate') &&
+              params.arrivalDate != null
+            ) {
+              LocalDate pArrival = LocalDate.parse(params.arrivalDate);
+              LocalDate todaysDate = LocalDate.parse(params.todaysDate);
+              int dta = (int) ChronoUnit.DAYS.between(todaysDate, pArrival);
+
+              result.put('daysToArrival', dta);
+
+              if (
+                (sdItem.minimumDaysBeforeArrival == null || dta >= sdItem.minimumDaysBeforeArrival) &&
+                (sdItem.maximumDaysBeforeArrival == null || dta <= sdItem.maximumDaysBeforeArrival)
+              ) {
+                result.put('conditionsMatched', true);
+              } else {
+                result.put('conditionsMatched', false);
               }
 
-              result.put(i, 'looped sd');
+            } else {
+              result.put('conditionsMatched', false);
+              result.put('daysToArrival', null);
+            }
+          } else {
+            result.put('conditionsMatched', false);
+            result.put('daysToArrival', null);
+          }
 
-              list.add(result);
+          for (int d = 0; d < sdItem['dateRanges'].size(); d++) {
 
+            HashMap drItem = sd[i]['dateRanges'][d];
+
+            if (
+              params.containsKey('arrivalDate') &&
+              params.containsKey('departureDate') &&
+              params.containsKey('todaysDate') &&
+              params.arrivalDate != null &&
+              params.departureDate != null &&
+              params.todaysDate != null
+            ) {
+              LocalDate drArrival = LocalDate.parse(drItem.startDate);
+              LocalDate drDeparture = LocalDate.parse(drItem.endDate);
+
+              LocalDate pArrival = LocalDate.parse(params.arrivalDate);
+              LocalDate pDeparture = LocalDate.parse(params.departureDate);
+
+              if (drArrival.compareTo(pDeparture) <= 0 && pArrival.compareTo(drDeparture) <= 0) {
+                result.put('datesMatched', true);
+                break;
+              } else {
+                result.put('datesMatched', false);
+              }
+
+            } else {
+              result.put('datesMatched', false);
             }
 
-            list.add("TEST");
+          }
 
-            return list;
+          result.put('discountMatched', result.get('conditionsMatched') && result.get('datesMatched'));
+
+          list.add(result);
+        }
+
+        return list;
         """,
         "lang": "painless",
         "params": {
           "arrivalDate": "2020-12-05",
-          "departureDate": "2020-12-19"
+          "departureDate": "2020-12-19",
+          "todaysDate": "2020-08-26"
         }
       }
     }
@@ -61,23 +124,33 @@ GET /lycan_main.thailand_villas_ref_wordpress_plugin.properties_6g3rl4/_search
         "bool": {
           "must": [
             {
-               "nested":{
-                  "path":"pricing.visual.specialDiscounts.dateRanges",
-                  "query":{
-                     "bool":{
-                        "must":[
-                           {
-                              "range":{
-                                 "pricing.visual.specialDiscounts.dateRanges.startDate":{
-                                    "gte":"2020-08-01",
-                                    "lte":"2022-12-31"
-                                 }
-                              }
-                           }
-                        ]
-                     }
+              "nested": {
+                "path": "pricing.visual.specialDiscounts.dateRanges",
+                "query": {
+                  "bool": {
+                    "must": [
+                      {
+                        "range": {
+                          "pricing.visual.specialDiscounts.dateRanges.startDate": {
+                            "gte": "2020-08-01",
+                            "lte": "2022-12-31"
+                          }
+                        }
+                      }
+                    ]
                   }
-               }
+                }
+              }
+            },
+            {
+              "nested": {
+                "path": "pricing.visual.specialDiscounts",
+                "query": {
+                  "match_phrase": {
+                    "pricing.visual.specialDiscounts.name.keyword": "Last Minute 10 Discount"
+                  }
+                }
+              }
             }
           ]
         }

@@ -1,0 +1,100 @@
+POST _scripts/lycan_discounts_lookup
+{
+    "script": {
+        "lang": "painless",
+        "source": """
+            // Elasticsearch _scripts key: lycan_discounts_lookup
+            ArrayList list = new ArrayList();
+
+            if (!params._source.containsKey('pricing')) {
+              return list;
+            }
+
+            if (!params._source.pricing.containsKey('visual')) {
+              return list;
+            }
+
+            if (!params._source.pricing.visual.containsKey('specialDiscounts')) {
+              return list;
+            }
+
+            ArrayList sd = params._source.pricing.visual.specialDiscounts;
+
+            for (int i = 0; i < sd.size(); i++) {
+              HashMap result = new HashMap();
+
+              HashMap sdItem = sd[i];
+
+              result.put('discount', sdItem);
+
+              if (sdItem.category == "DAYS_BEFORE_ARRIVAL") {
+                if (
+                  params.containsKey('todaysDate') &&
+                  params.todaysDate != null &&
+                  params.containsKey('arrivalDate') &&
+                  params.arrivalDate != null
+                ) {
+                  LocalDate pArrival = LocalDate.parse(params.arrivalDate);
+                  LocalDate todaysDate = LocalDate.parse(params.todaysDate);
+                  int dta = (int) ChronoUnit.DAYS.between(todaysDate, pArrival);
+
+                  result.put('daysToArrival', dta);
+
+                  if (
+                    (sdItem.minimumDaysBeforeArrival == null || dta >= sdItem.minimumDaysBeforeArrival) &&
+                    (sdItem.maximumDaysBeforeArrival == null || dta <= sdItem.maximumDaysBeforeArrival)
+                  ) {
+                    result.put('conditionsMatched', true);
+                  } else {
+                    result.put('conditionsMatched', false);
+                  }
+
+                } else {
+                  result.put('conditionsMatched', false);
+                  result.put('daysToArrival', null);
+                }
+              } else {
+                result.put('conditionsMatched', false);
+                result.put('daysToArrival', null);
+              }
+
+              for (int d = 0; d < sdItem['dateRanges'].size(); d++) {
+
+                HashMap drItem = sd[i]['dateRanges'][d];
+
+                if (
+                  params.containsKey('arrivalDate') &&
+                  params.containsKey('departureDate') &&
+                  params.containsKey('todaysDate') &&
+                  params.arrivalDate != null &&
+                  params.departureDate != null &&
+                  params.todaysDate != null
+                ) {
+                  LocalDate drArrival = LocalDate.parse(drItem.startDate);
+                  LocalDate drDeparture = LocalDate.parse(drItem.endDate);
+
+                  LocalDate pArrival = LocalDate.parse(params.arrivalDate);
+                  LocalDate pDeparture = LocalDate.parse(params.departureDate);
+
+                  if (drArrival.compareTo(pDeparture) <= 0 && pArrival.compareTo(drDeparture) <= 0) {
+                    result.put('datesMatched', true);
+                    break;
+                  } else {
+                    result.put('datesMatched', false);
+                  }
+
+                } else {
+                  result.put('datesMatched', false);
+                }
+
+              }
+
+              result.put('discountMatched', result.get('conditionsMatched') && result.get('datesMatched'));
+
+              list.add(result);
+            }
+
+            return list;
+        """
+    }
+}
