@@ -519,7 +519,6 @@
       }
     },
     "pricing": {
-      "type": "nested",
       "properties": {
         "los": {
           "properties": {
@@ -530,7 +529,6 @@
           }
         },
         "visual": {
-          "type": "nested",
           "properties": {
             "currency": {
               "type": "text",
