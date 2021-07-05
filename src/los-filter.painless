@@ -48,7 +48,7 @@ for(int i = 0; i < records.length; i++) {
 // If we've reached this point and the closestMatch is still null then no available price was available
 if (closestMatch === null) {
    
-  if (params.fallbackToVisualPricing) {
+  if (params.containsKey('fallbackToVisualPricing') && params.fallbackToVisualPricing == true) {
     // Elasticsearch _scripts key: lycan_visual_pricing_filter
     if (doc['pricing.visual.currency.keyword'].size() == 0) {
       return false;
