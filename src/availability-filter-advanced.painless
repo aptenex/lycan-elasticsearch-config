@@ -21,7 +21,8 @@ if (uaDiffDays < 0) {
 String as = doc['unitAvailability.configuration.availability.keyword'].value;
 
 if (uaDiffDays > as.length()) {
-  throw new Exception(as.length() + "");
+  // unit availability is way too in the past, something has gone wrong with regeneration
+  return false;
 }
 
 if (!params.containsKey('minimumNights')) {
