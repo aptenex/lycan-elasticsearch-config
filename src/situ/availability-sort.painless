@@ -1,0 +1,39 @@
+// script name: situ_availability_sort
+if (doc['unitAvailability.dateRange.startDate'].size() == 0 || doc['unitAvailability.configuration.availability.keyword'].size() == 0) {
+    return 0;
+}
+
+// Get the difference in days between the arrival and departure
+LocalDate cArrival = LocalDate.parse(params.arrivalDate);
+LocalDate cDeparture = LocalDate.parse(params.departureDate);
+
+int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
+
+// Get the difference in days between the arrival
+// and unitAvailability start date sequence
+
+LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDate();           
+
+
+int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
+if (uaDiffDays < 0) {
+    throw new Exception("Cannot run query against past dates");
+}
+
+String as = doc['unitAvailability.configuration.availability.keyword'].value;
+
+int nightsSequence = (uaDiffDays + nights);
+
+String asSpliced = as.substring(uaDiffDays, nightsSequence).toString();
+
+// we now want to get the count of available days out of the total days 
+float available = 0;
+for (int i = 0; i < asSpliced.length(); i++) {
+    if (asSpliced.charAt(i).toString() == 'Y') {
+    available++;
+    }
+    
+}
+//int available = asSpliced.toCharArray().asList().filter(day -> day == 'Y');
+
+return available / asSpliced.length();

@@ -1,0 +1,127 @@
+{
+  "from": 0,
+  "track_total_hits": 10000,
+  "size": 2000,
+  "aggs": {
+    "pricing.visual.nightlyLow": {
+      "histogram": {
+        "field": "pricing.visual.nightlyLow",
+        "interval": 50,
+        "offset": 0
+      }
+    }
+  },
+  "sort": {
+    "_script": {
+      "order": "desc",
+      "type": "number",
+      "script": {
+        "source": """
+            if (doc['unitAvailability.dateRange.startDate'].size() == 0 || doc['unitAvailability.configuration.availability.keyword'].size() == 0) {
+                return 0;
+            }
+            
+            // Get the difference in days between the arrival and departure
+            LocalDate cArrival = LocalDate.parse(params.arrivalDate);
+            LocalDate cDeparture = LocalDate.parse(params.departureDate);
+            
+            int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
+            
+            // Get the difference in days between the arrival
+            // and unitAvailability start date sequence
+            
+            LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDate();           
+            
+        
+            int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
+            if (uaDiffDays < 0) {
+              throw new Exception("Cannot run query against past dates");
+            }
+            
+            String as = doc['unitAvailability.configuration.availability.keyword'].value;
+            
+            int nightsSequence = (uaDiffDays + nights);
+            
+            String asSpliced = as.substring(uaDiffDays, nightsSequence).toString();
+            
+            // we now want to get the count of available days out of the total days 
+            float available = 0;
+            for (int i = 0; i < asSpliced.length(); i++) {
+              if (asSpliced.charAt(i).toString() == 'Y') {
+                available++;
+              }
+              
+            }
+            //int available = asSpliced.toCharArray().asList().filter(day -> day == 'Y');
+
+            return available / asSpliced.length();
+        """,
+        "params": {
+          "arrivalDate": "2024-06-08",
+          "departureDate": "2024-06-30"
+        }
+      }
+    }
+  },
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "script": {
+            "script": {
+              "source": """
+                            if (doc['unitAvailability.dateRange.startDate'].size() == 0 || doc['unitAvailability.configuration.availability.keyword'].size() == 0) {
+                                return false;
+                            }
+                            
+                            // Get the difference in days between the arrival and departure
+                            LocalDate cArrival = LocalDate.parse(params.arrivalDate);
+                            LocalDate cDeparture = LocalDate.parse(params.departureDate);
+                            
+                            int nights = (int) ChronoUnit.DAYS.between(cArrival, cDeparture);
+                            
+                            // Get the difference in days between the arrival
+                            // and unitAvailability start date sequence
+                            
+                            LocalDate uaStart = doc['unitAvailability.dateRange.startDate'].value.toLocalDate();           
+                            
+                        
+                            int uaDiffDays = (int) ChronoUnit.DAYS.between(uaStart, cArrival);
+                            if (uaDiffDays < 0) {
+                              throw new Exception("Cannot run query against past dates");
+                            }
+                            
+                            String as = doc['unitAvailability.configuration.availability.keyword'].value;
+                            
+                            int nightsSequence = (uaDiffDays + nights);
+                            
+                            String asSpliced = as.substring(uaDiffDays, nightsSequence).toString();
+                            
+                            // we now want to get the count of available days out of the total days 
+                            float available = 0;
+                            for (int i = 0; i < asSpliced.length(); i++) {
+                              if (asSpliced.charAt(i).toString() == 'Y') {
+                                available++;
+                              }
+                            }
+                
+                            float availabilityPercentage = available / asSpliced.length();
+                            
+                            return availabilityPercentage > 0.6;
+                        """,
+              "params": {
+                "arrivalDate": "2024-06-08",
+                "departureDate": "2024-06-30"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "_source": {
+    "excludes": [
+      "pricing.los"
+    ]
+  }
+}
